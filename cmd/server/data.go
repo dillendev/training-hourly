@@ -6,6 +6,14 @@ import (
 	hourly "github.com/dillendev/training-hourly"
 )
 
+func getProjects() (projects []hourly.Project) {
+	for _, project := range userProjects {
+		projects = append(projects, project)
+	}
+
+	return
+}
+
 func getUsers() []hourly.User {
 	return []hourly.User{
 		{
@@ -41,7 +49,7 @@ func getUsers() []hourly.User {
 	}
 }
 
-var workDays = map[int][]time.Weekday{
+var userDays = map[int][]time.Weekday{
 	13934: {time.Monday, time.Tuesday, time.Thursday, time.Friday},
 	13935: {time.Tuesday, time.Wednesday, time.Friday, time.Saturday},
 	13936: {time.Monday, time.Tuesday, time.Wednesday, time.Friday, time.Saturday},
@@ -50,7 +58,7 @@ var workDays = map[int][]time.Weekday{
 	14026: {time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday},
 }
 
-var projects = map[int]hourly.Project{
+var userProjects = map[int]hourly.Project{
 	13934: {
 		Id:   103,
 		Name: "ING Main Building",
@@ -78,14 +86,14 @@ func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
 		project *hourly.Project
 	)
 
-	for startId, p := range projects {
+	for startId, p := range userProjects {
 		if userId >= startId {
 			project = &p
 			break
 		}
 	}
 
-	days := workDays[userId]
+	days := userDays[userId]
 	date := time.Date(2023, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	if userId%2 == 0 {

@@ -21,6 +21,10 @@ func (s *server) ListUsers(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, getUsers())
 }
 
+func (s *server) ListProjects(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, getProjects())
+}
+
 func (s *server) ListTimeEntries(ctx echo.Context, userId int, params hourly.ListTimeEntriesParams) error {
 	var valid bool
 

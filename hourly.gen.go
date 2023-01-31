@@ -155,6 +155,9 @@ type ClientInterface interface {
 
 	CreateToken(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListProjects request
+	ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListUsers request
 	ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -176,6 +179,18 @@ func (c *Client) CreateTokenWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) CreateToken(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateTokenRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListProjects(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListProjectsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -246,6 +261,33 @@ func NewCreateTokenRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListProjectsRequest generates requests for ListProjects
+func NewListProjectsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/api/projects")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -395,6 +437,9 @@ type ClientWithResponsesInterface interface {
 
 	CreateTokenWithResponse(ctx context.Context, body CreateTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTokenResponse, error)
 
+	// ListProjects request
+	ListProjectsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error)
+
 	// ListUsers request
 	ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
 
@@ -420,6 +465,29 @@ func (r CreateTokenResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateTokenResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListProjectsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Project
+	JSON400      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r ListProjectsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListProjectsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -490,6 +558,15 @@ func (c *ClientWithResponses) CreateTokenWithResponse(ctx context.Context, body 
 	return ParseCreateTokenResponse(rsp)
 }
 
+// ListProjectsWithResponse request returning *ListProjectsResponse
+func (c *ClientWithResponses) ListProjectsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListProjectsResponse, error) {
+	rsp, err := c.ListProjects(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListProjectsResponse(rsp)
+}
+
 // ListUsersWithResponse request returning *ListUsersResponse
 func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error) {
 	rsp, err := c.ListUsers(ctx, reqEditors...)
@@ -542,6 +619,39 @@ func ParseCreateTokenResponse(rsp *http.Response) (*CreateTokenResponse, error) 
 			return nil, err
 		}
 		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListProjectsResponse parses an HTTP response from a ListProjectsWithResponse call
+func ParseListProjectsResponse(rsp *http.Response) (*ListProjectsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListProjectsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Project
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
 
 	}
 
@@ -626,6 +736,9 @@ type ServerInterface interface {
 	// Returns a new authentication token
 	// (POST /api/auth/tokens)
 	CreateToken(ctx echo.Context) error
+	// Returns a list of projects
+	// (GET /api/projects)
+	ListProjects(ctx echo.Context) error
 	// Returns a list of users
 	// (GET /api/users)
 	ListUsers(ctx echo.Context) error
@@ -645,6 +758,17 @@ func (w *ServerInterfaceWrapper) CreateToken(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.CreateToken(ctx)
+	return err
+}
+
+// ListProjects converts echo context to params.
+func (w *ServerInterfaceWrapper) ListProjects(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.ListProjects(ctx)
 	return err
 }
 
@@ -722,6 +846,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/api/auth/tokens", wrapper.CreateToken)
+	router.GET(baseURL+"/api/projects", wrapper.ListProjects)
 	router.GET(baseURL+"/api/users", wrapper.ListUsers)
 	router.GET(baseURL+"/api/:userId/time_entries", wrapper.ListTimeEntries)
 
@@ -730,23 +855,23 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8RXUW/bNhD+K8Rtj3Ikt8mQ6C1ts83D2hVNigELjIKWzjY7iVSOVFrD0H8fjpQsy3bi",
-	"ounaNxm84/fd3Xd39BoyU1ZGo3YW0jXYbIml9J9XRIb4Az/LsiqQP0u0Vi4QUnhvkYQ2TsxNrXNoIqjI",
-	"VEhOoR1YrsGtKvawjpReQNNEQHhXK8Ic0tuN4TTqDM3sI2aOr3xLxn8OSagc0vHF84vTCLQs2WPy5jfx",
-	"WiotXtSqyD3KLh922lBR2uECia3CDcdIqhxa00M0b1SJV9rRaoeodJDCs2R8MUrGo2QMEcxUUcgZnzqq",
-	"MYIcbUaqcspoSOFlgVIrvRCzNgxxKUbCmUrMC2MIohB6cnrGsVsnyWH+YQflJjlPkyRNkn+AbUxVHbAZ",
-	"P+ts9hIl3YF0bDPfHM6MYcJ8OojjgPdD2a/6Av9MOIcUfop7QcatGuNOB80w6jXMDZU+tlw6HDlVIkT7",
-	"6NtZ+DKfQ+WXDnrCWwkZcDooD/Mv6nd4V6P1BIb5rgrpmNIkPy7DLdtHgGxltMV9JMfHx0GC2aH7ueeP",
-	"9uKlzlfib0lZYe6RNUvSIaTjsyR5alN2d+27PNiurct+NCwLzGpSbnXNKguEZigJ6bJ2y/7Xr51exr+M",
-	"sqWk0RI/j0KSojAvfTN4215JS+cqaBhG6bnh2wqVYVuXNlWvJzcQQU1Fa2/TODYVamtqyvDE0CJunWzM",
-	"tk0ETjlOPPxuaipW4vLtBCK4R7JhgiQnycmY7fgaWSlI4flJcpKwcqVb+hhjWalY1m4Z+yCCCE2QJhdH",
-	"chezGuEloXR404ZKQcEvTO7nXGa0Q+29ZFUVKvN+8UcbRkBo3WONPWiNpgl1DPr1vJ4lybfGarvDYw3H",
-	"76X44/qvNyIoRHxSbimkCIVuIjj9hlTCaj1AYaLvZaFyQV1KIjj7PrgOSctCWKR7JIGtYd8kkN5OI7B1",
-	"WUrec/AOXU3aCik0fhIsJ9SuZdUlrYmC2GqL5Mu5wAMq+1NZ995bPLH4ymFpj6XAz7Bm06aSSK4eEYM/",
-	"F2YuQgw/TAfDSgwH1e20eaA0hbJui3xXjzX/nuRNzMvvA2pH7Tx+sD7dC4fteJSQLNH5ot6ud6j7h+Hk",
-	"FT9W+CePHdgshwAM29M6PIT6fO2P9l2Ea163grd3B3JXI616FL+PX4Xz/uIv2/u7YFc6fwwKdf51QNPv",
-	"Ifb+YfoVimfio04cP3AAnian/z/u7t+Zp/Ubp05sUhcu47ka+qVf+GkcFyaTxdJYl54n5wk00+a/AAAA",
-	"//+QQW86kw0AAA==",
+	"H4sIAAAAAAAC/9RXUW/bNhD+K8Rtj3Ikt8mQ6C1ts83D2gVNigELgoKWzjY7iVSOVFrD0H8fjpSsyHbi",
+	"LulS7E0G7/h9d/cd77yCzJSV0aidhXQFNltgKf3nGZEh/sAvsqwK5M8SrZVzhBQ+WCShjRMzU+scmggq",
+	"MhWSU2gHlitwy4o9rCOl59A0ERDe1Iowh/RqbXgddYZm+gkzx1eek/GfQxIqh3R88vLkMAItS/aYvPtF",
+	"vJVKi1e1KnKPssmHndZUlHY4R2KrcMM+kiqH1nQXzUtV4pl2tNwgKh2k8CIZn4yS8SgZQwRTVRRyyqeO",
+	"aowgR5uRqpwyGlJ4XaDUSs/FtA1DnIqRcKYSs8IYgiiEnhwecezWSXKYf9xAuUyO0yRJk+QvYBtTVTts",
+	"xi86m61ESbcjHXeZrw+nxjBhPh3EscP7vuxXfYF/JJxBCj/EvSDjVo1xp4NmGPUKZoZKH1suHY6cKhGi",
+	"bfS7Wfg6n13llw56wncSMuC0Ux7mb9Tv8aZG6wkM810V0jGlSb5fhndsHwCyldEWt5EcH+8HCWa77uee",
+	"39uLpzpfij8lZYW5RdYsSYeQjo+S5KlN2d217XJvu7Yu29GwLDCrSbnlBassEJqiJKTT2i36Xz93ehn/",
+	"NMoWkkYL/DIKSYrCe+mbwdv2Slo4V0HDMErPDN9WqAzburSpeju5hAhqKlp7m8axqVBbU1OGB4bmcetk",
+	"Y7ZtInDKceLhV1NTsRSn5xOI4BbJhhckOUgOxmzH18hKQQovD5KDhJUr3cLHGMtKxbJ2i9gHEURogjS5",
+	"OJK7mNUIrwmlw8s2VAoKfmVy/85lRjvU3ktWVaEy7xd/suEJCK27r7EHrdE0oY5Bv57XiyT51lhtd3is",
+	"4fN7Kn67+OOdCAoRn5VbCClCoZsIDr8hlTBad1CY6FtZqFxQl5IIjp4H1yFpWQiLdIsksDXsmwTSq+sI",
+	"bF2WkuccvEdXk7ZCCo2fBcsJtWtZdUlroiC29tH0FZ3jDqH9rqw774yeKAHlsLT/YqC0/SqJ5PIBVfhz",
+	"YWZiHcx308SwKsNH6+q6uadMhbJuyL8rT22RHq7NB2/xHIXxI+YRVQkx/E9L0pLv6rHi35O8iXk3+Yja",
+	"UTsu761Pt4CyHb/0JEt0vqhXqw3qfm+fvOFdkn/yVID17A7AcHeYhj21z9f25N1EuOBtSPBy1YHc1EjL",
+	"HsWvS2/CeX/x161lm2BnOn8ICnX+OKDr5xB7/7/hEYpn4qNOHN9xPh0mh/897ua/zaf1G6dOrFMXLuOx",
+	"F/ql38fSOC5MJouFsS49To4TaK6bfwIAAP//iUBTYjIPAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
