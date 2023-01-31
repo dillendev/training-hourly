@@ -422,7 +422,7 @@ func (r CreateTokenResponse) StatusCode() int {
 type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *User
+	JSON200      *[]User
 	JSON400      *Error
 }
 
@@ -445,7 +445,7 @@ func (r ListUsersResponse) StatusCode() int {
 type ListTimeEntriesResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *TimeEntry
+	JSON200      *[]TimeEntry
 	JSON400      *Error
 	JSON404      *Error
 }
@@ -556,7 +556,7 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest User
+		var dest []User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -589,7 +589,7 @@ func ParseListTimeEntriesResponse(rsp *http.Response) (*ListTimeEntriesResponse,
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TimeEntry
+		var dest []TimeEntry
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -723,22 +723,22 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8RW7W/bthP+V4j7/T7KFp06Q6JvXpthHvaGJsWABUZBS2ebnUQqRyqtYeh/H46U/J42",
-	"2Jr1GyUe77mXh89xA7mtamvQeAfZBly+wkqF5Q2RJV7gJ1XVJfKyQufUEiGDdw5JGOvFwjamgDaBmmyN",
-	"5DW6A8sN+HXNJ5wnbZbQtgkQPjSasIDsfms4S3pDO/+AuWeXd7rCG+NpfRSG8pDBhRxdD+RoIEeQwFyX",
-	"pZrzrqcGEyjQ5aRrr62BDF6XqIw2SzFvdFnwYiIGwttaLEprCRLQBWQjOb68HifgvCKPxfsjlDt5lUmZ",
-	"SfknsI2t6zM2o4ve5qQibHpSjP3It5tzazlg3j3I48xpjnv7WxuPSyT+v5/DBhaWqhBpoTwOvK4QklNf",
-	"+zk978xRK3UBCae5l9RBJGdbbP9C8xYfGnQB9rBmdak8BzItvkykPdvPALnaGoenSJ63vwwSzc755wtx",
-	"RNNAqutXzCmjKjafmGIt/lCUl/YRmXekPEI2upTyhC9PtTa6OsOF6Ov0yLkuBSfdkdNsmAyYN6T9+pYF",
-	"IQY0R0VIk8avdl8/9CwZfTfIV4oGK/w0iEVKopgEQgfbHX9W3tfQMow2C8veSp1j15euVL9M7yCBhsrO",
-	"3mVpams0zjaU49DSMu0OuZRt2wS89lx4+NE2VK7F5PcpJPCI5KIKyKEcjtiO3ahaQwavhnIoIYFa+VXI",
-	"MVW1TlXjV2lIIpLQRmpycxTfRGYjvCZUHu+6VCky+HtbBK3KrfFowilV16XOw7n0g4vXOKosr/5PuIAM",
-	"/pfuZDjtNDg9uBptG/sY+RviupDya2N1tyNgHUroRPx0+9uvIjJEfNR+JZSIjW4TGH/FUOLcORPC1Dyq",
-	"UheC+pIkcPnf4Hoko0rhkB6RBHaGu0sC2f0sAddUleJZBW/RN2ScUMLgR8F0QuO7qPqitUkkW+OQQjuX",
-	"eIZlP2vn3wWLF2x+kK6ne66I1FrYhYihfrN2Hxb8UI/uZ+0THSi183vB92Xf8Pe0aFOebO/ReOpk98k2",
-	"9I8RtmPFIFWhD7273xyFHh5H0zf8ruBPVhfYzoAIDPuiHN8su3qdKvgxwi1PVcGjuQd5aJDWO5Qwdt/E",
-	"/Z3j5w31Y7AbU3wOCk3xz4BmLylo26fjM4jN8Q16DnxDORvL8cvjHr/c/9214tKJbemiM1bJeC124ztL",
-	"09LmqlxZ57MreSWhnbV/BwAA///oN9z4fgwAAA==",
+	"H4sIAAAAAAAC/8RW227jNhD9FWLaRzmSs0mR6C3dTVEXvWGTRYEGxoKWxja3EqkMR9k1DP17MaR8d5LF",
+	"Xt8ocThnLodnuITC1Y2zaNlDvgRfzLHWYXlN5EgW+EHXTYWyrNF7PUPI4Y1HUtaxmrrWltAl0JBrkNig",
+	"37FcAi8aOeGZjJ1B1yVAeN8awhLyu7XhOFkZusk7LFhc3poary3TYi8MzZDDaTa8HGTDQTaEBCamqvRE",
+	"dplaTKBEX5Bp2DgLObysUFtjZ2rSmqqUxZUaKHaNmlbOESRgSsiH2dn55VkCnjUxlm/3UG6zizzL8iz7",
+	"F8TGNc0Rm+HpyuagImJ6UIztyNebE+ckYNndyePIaYl7/dtYxhmS/N/OYQlTR3WItNSMAzY1QnLoazun",
+	"jzuz10pTQiJpbiW1E8nRFrv/0L7G+xZ9gN2tWVNplkBG5fNE2rJ9Asg3zno8RGLZfh4kmh3zLxdij6aB",
+	"VJcvhFNW12J+ZcuF+kdTUbkHFN6RZoR8eJ5lB3x5rLXR1REuRF+HR451KTjpjxxmI2TAoiXDixsRhBjQ",
+	"BDUhXbU833z9smLJ8KdBMdc0mOOHQSxSEsUkEDrYbvgzZ26gExhjp068VabAvi99qf4Y3UICLVW9vc/T",
+	"1DVovWupwBNHs7Q/5FOx7RJgw1J4+NW1VC3U1d8jSOAByUcVyE6yk6HYiRvdGMjhxUl2kkECjeZ5yDHV",
+	"jUl1y/M0JBFJ6CI1pTlabqKwEV4SasbbPlWKDP7ZlUGrCmcZbTilm6YyRTiXvvPxGkeVldWPhFPI4Yd0",
+	"I8Npr8HpztXoutjHyN8Q12mWfWms/nYErF0JvVK/3fz1p4oMUe8Nz5VWsdFdAmdfMJQ4d46EMLIPujKl",
+	"olVJEjj/NriMZHWlPNIDksLecHNJIL8bJ+DbutYyq+A1ckvWK60svldCJ7TcR7UqWpdEsrUeKbRzhkdY",
+	"9rvx/CZYfGbzDWPtnytB0LBufU01kV48QYawr9xUxRy+Gw92O7ErVHfj7pHWVMbzVvCrfizle1R2qYy8",
+	"t2iZej1+tD+rV4rYiZSQrpFDU++We6GHV9PolTw45FNkB9bDIQLDtlrHx8ymXofSvo9wI+NWycxegdy3",
+	"SIsNSpjHr+L+xvHHTft9sGtbPgWFtvw0oPG3IPvmcfkJjJfABytyfEcBPMvOvj7u/lv/8+6blE6tSxed",
+	"ia7G+7IZ+HmaVq7Q1dx5zi+yiwy6cfd/AAAA//+lfGcSsAwAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
