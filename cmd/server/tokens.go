@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 var ErrInvalidToken = errors.New("invalid token")
 
+var tokensFilename = filepath.Join(os.TempDir(), "tokens.txt")
+
 func verifyToken(token string) error {
-	content, err := os.ReadFile("tokens.txt")
+	content, err := os.ReadFile(tokensFilename)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return ErrInvalidToken
@@ -31,7 +34,7 @@ func verifyToken(token string) error {
 }
 
 func storeToken(token string) error {
-	file, err := os.OpenFile("tokens.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(tokensFilename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open tokens file: %w", err)
 	}
