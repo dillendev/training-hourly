@@ -50,6 +50,17 @@ var workDays = map[int][]time.Weekday{
 	14026: {time.Monday, time.Tuesday, time.Wednesday, time.Thursday, time.Friday},
 }
 
+var projects = map[int]hourly.Project{
+	13934: {
+		Id:   103,
+		Name: "ING Main Building",
+	},
+	14024: {
+		Id:   104,
+		Name: "Pathe Amersfoort",
+	},
+}
+
 func isWorkingAt(date time.Time, days []time.Weekday) bool {
 	for _, day := range days {
 		if date.Weekday() == day {
@@ -62,7 +73,17 @@ func isWorkingAt(date time.Time, days []time.Weekday) bool {
 
 // getTimeEntries generates time entries for a given user, the output is deterministic
 func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
-	var id int
+	var (
+		id      int
+		project *hourly.Project
+	)
+
+	for startId, p := range projects {
+		if userId >= startId {
+			project = &p
+			break
+		}
+	}
 
 	days := workDays[userId]
 	date := time.Date(2023, 2, 1, 0, 0, 0, 0, time.UTC)
@@ -76,6 +97,7 @@ func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
 			Billable:  false,
 			StartedAt: date,
 			StoppedAt: nil,
+			Project:   *project,
 		})
 	}
 
@@ -111,6 +133,7 @@ func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
 				Billable:  true,
 				StartedAt: startedAt,
 				StoppedAt: &stoppedAt,
+				Project:   *project,
 			})
 		}
 
