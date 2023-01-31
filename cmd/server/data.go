@@ -101,7 +101,7 @@ func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
 
 		entries = append(entries, hourly.TimeEntry{
 			Id:        id,
-			At:        date.Format(time.RFC3339),
+			At:        date.Format("2006-01-02"),
 			Billable:  false,
 			StartedAt: date,
 			StoppedAt: time.Time{},
