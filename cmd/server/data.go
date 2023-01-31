@@ -104,7 +104,7 @@ func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
 			At:        date.Format(time.RFC3339),
 			Billable:  false,
 			StartedAt: date,
-			StoppedAt: nil,
+			StoppedAt: time.Time{},
 			Project:   *project,
 		})
 	}
@@ -140,7 +140,7 @@ func getTimeEntries(userId int) (entries []hourly.TimeEntry) {
 				At:        date.Format(time.RFC3339),
 				Billable:  true,
 				StartedAt: startedAt,
-				StoppedAt: &stoppedAt,
+				StoppedAt: stoppedAt,
 				Project:   *project,
 			})
 		}
