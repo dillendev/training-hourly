@@ -19,7 +19,10 @@ The Go client is a client for the Hourly API. It can be used to retrieve the dat
 ```go
 package main
 
-import hourly "github.com/dillendev/training-hourly"
+import (
+	"github.com/deepmap/oapi-codegen/pkg/securityprovider"
+	hourly "github.com/dillendev/training-hourly"
+)
 
 func main() {
     // Setup bearer token authentication
@@ -28,15 +31,15 @@ func main() {
 		panic(err)
 	}
 
-    // Setup client-side middleware to add the authorization header
+	// Setup client-side middleware to add the authorization header
     authOption := hourly.WithRequestEditorFn(provider.Intercept)
 
-    // Create a new client for the Hourly API with the middleware
+	// Create a new client for the Hourly API with the middleware
 	client, err := hourly.NewClientWithResponses("http://localhost:8989", authOption)
 	if err != nil {
 		panic(err)
 	}
 
-    // Do something with: client
+	// Do something with: client
 }
 ```
